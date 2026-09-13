@@ -6,6 +6,13 @@ from tavily import TavilyClient
 from lib.memory import MemoryFragment, LongTermMemory
 from lib.observability import tracer
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
+from lib.llm import LLM
+from lib.parsers import PydanticOutputParser
+from lib.agents import Agent
+from lib.utils import get_final_answer, get_tools_used
 
 load_dotenv()
 
@@ -350,3 +357,130 @@ def save_web_result(
             "source_type": "web",
         },
     )
+
+class QueryPlan(BaseModel):
+    needs_decomposition: bool = Field(
+        description="Whether the question requires multiple independent facts"
+    )
+    subquestions: list[str] = Field(
+        description="Independent questions needed to answer the original question"
+    )
+
+
+@tool
+def decompose_query(question: str) -> dict:
+    """
+    Break a complex game-industry question into independent subquestions.
+
+    Use this when answering the original question requires multiple facts,
+    lookups, comparisons, filters, or intermediate steps.
+
+    Do not use this for simple single-fact questions.
+    """
+    llm = LLM(
+        model="gpt-4o-mini",
+        temperature=0.0,
+    )
+
+    prompt = f"""Analyze this video-game question: {question}
+Determine whether answering it requires multiple independent facts or steps.
+If it is simple, set needs_decomposition to false and return no subquestions.
+If it is complex, split it into the smallest useful independent
+subquestions. Each subquestion should be answerable using one or more
+available retrieval/search tools.
+Do not answer the question itself.
+"""
+
+    response = llm.invoke(
+        prompt,
+        response_format=QueryPlan,
+    )
+
+    parser = PydanticOutputParser(
+        model_class=QueryPlan,
+    )
+
+    plan = parser.parse(response)
+
+    return plan.model_dump()
+
+def _research_subquestion(
+    question: str,
+    worker_id: int,
+) -> dict:
+    researcher = Agent(
+        model_name="gpt-4o-mini",
+        temperature=0.0,
+        tools=[
+            retrieve_game,
+            game_web_search,
+            evaluate_retrieval,
+            exact_game_lookup,
+            search_memory,
+            get_recent_game_news,
+        ],
+        instructions=(
+            "You are a focused game-industry research agent. "
+            "Answer only the assigned subquestion. "
+            "Use local knowledge first and use web or news search only when needed. "
+            "Do not decompose the question further. "
+            "Return a concise factual answer supported by the available evidence."
+        ),
+    )
+
+    run = researcher.invoke(
+        query=question,
+        session_id=f"research-{worker_id}",
+    )
+
+    return {
+        "question": question,
+        "answer": get_final_answer(run),
+        "tools_used": get_tools_used(run),
+    }
+
+
+@tool
+def research_subquestions(
+    subquestions: list[str],
+    max_workers: int = 3,
+) -> list[dict]:
+    """
+    Research independent subquestions concurrently using separate agents.
+
+    Args:
+        subquestions: Independent questions that can be researched in parallel.
+        max_workers: Maximum number of concurrent research agents.
+    """
+    if not subquestions:
+        return []
+
+    worker_count = min(
+        max(1, max_workers),
+        len(subquestions),
+        4,
+    )
+
+    with ThreadPoolExecutor(
+        max_workers=worker_count
+    ) as executor:
+        futures = []
+
+        for worker_id, question in enumerate(subquestions):
+            # Preserve the parent trace across worker threads.
+            context = copy_context()
+
+            futures.append(
+                executor.submit(
+                    context.run,
+                    _research_subquestion,
+                    question,
+                    worker_id,
+                )
+            )
+
+        # Preserve the same order as the decomposed questions.
+        return [
+            future.result()
+            for future in futures
+        ]
