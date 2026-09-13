@@ -7,9 +7,7 @@ def test_game_web_search_returns_internal_results_when_retrieval_is_sufficient(
     monkeypatch,
 ):
     retrieved_docs = [
-        [
-            "Pokémon Gold and Silver were released for Game Boy Color in 1999."
-        ]
+        "Pokémon Gold and Silver were released for Game Boy Color in 1999."
     ]
 
     monkeypatch.setattr(
@@ -110,9 +108,7 @@ def test_game_web_search_combines_internal_and_web_results_when_internal_is_usef
         tools,
         "retrieve_game",
         lambda question: [
-            [
-                "Rockstar Games develops the Grand Theft Auto series."
-            ]
+            "Rockstar Games develops the Grand Theft Auto series."
         ],
     )
 

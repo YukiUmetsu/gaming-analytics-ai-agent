@@ -114,7 +114,7 @@ def game_web_search(
             "content": doc,
             "source_type": "internal",
         }
-        for doc in internal_docs
+        for doc in retrieved_docs
     ]
 
     useful = evaluation.get("useful", False)
