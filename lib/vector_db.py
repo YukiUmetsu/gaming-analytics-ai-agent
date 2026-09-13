@@ -4,8 +4,6 @@ import chromadb
 from chromadb.utils import embedding_functions
 from chromadb.api.models.Collection import Collection as ChromaCollection
 from chromadb.api.types import EmbeddingFunction, QueryResult, GetResult
-
-from lib.loaders import PDFLoader
 from lib.documents import Document, Corpus
 
 
@@ -241,6 +239,7 @@ class CorpusLoaderService:
             >>> # PDF is now searchable in the vector store
             >>> results = store.query(["machine learning methodology"])
         """
+        from lib.loaders import PDFLoader
         store = self.manager.get_or_create_store(store_name)
         print(f"VectorStore `{store_name}` ready!")
 

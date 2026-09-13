@@ -11,3 +11,4 @@ wheels/
 .history/
 .env
 .python-version
+chromadb/**

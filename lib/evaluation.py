@@ -7,6 +7,9 @@ from lib.state_machine import Run
 from lib.llm import LLM
 from lib.messages import AIMessage, BaseMessage
 from lib.parsers import PydanticOutputParser
+from lib.tooling import Tool
+import logging
+logger = logging.getLogger(__name__)
 
 
 class TaskCompletionMetrics(BaseModel):
@@ -63,10 +66,22 @@ class JudgeEvaluation(BaseModel):
 
 class AgentEvaluator:
     """Comprehensive agent evaluation framework"""
-    
-    def __init__(self):
-        self.llm_judge = LLM(model="gpt-4o-mini")
-    
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = "gpt-4o-mini",
+        temperature: Optional[float] = 0.0,
+        tools: Optional[List[Tool]] = []
+    ):
+        self.llm_judge = LLM(
+            api_key=api_key,
+            model=model,
+            temperature=temperature,
+            tools=tools
+        )
+
+
     def evaluate_final_response(self, 
                           test_case: TestCase, 
                           agent_response: str,
@@ -322,7 +337,85 @@ class AgentEvaluator:
             overall_score=overall_score,
             feedback=feedback
         )
-    
+
+    def evaluate_retrieval(
+            self,
+            question: str,
+            retrieved_docs: list[dict],
+            execution_time: Optional[float] = 0.0
+        ) -> EvaluationResult:
+        """
+        Evaluate the usability of the documents to respond to the question.
+        """
+        # Use LLM as judge to evaluate the retrieval
+        judge_prompt = f"""
+        Evaluate the usability of the documents to respond to the question.
+        User Query: {question}
+        Retrieved Documents: {retrieved_docs}
+        Rate the response on:
+        1. Relevance: Are the documents relevant to the question?
+        2. Coverage: Are the documents comprehensive?
+        3. Format: Are the documents in the correct format?
+        Provide your evaluation with a brief explanation.
+        """
+         # Use structured output with Pydantic model
+        judge_response = self.llm_judge.invoke(
+            input=judge_prompt,
+            response_format=JudgeEvaluation
+        )
+
+        # Parse the structured response
+        parser = PydanticOutputParser(model_class=JudgeEvaluation)
+        try:
+            evaluation = parser.parse(judge_response)
+        except Exception as e:
+            logger.error(f"Structured parsing error: {e}")
+            logger.error(f"Judge response content: {judge_response.content}")
+            return self._create_failed_evaluation(f"Structured parsing error: {str(e)}")
+
+        # Calculate scores using the structured evaluation
+        task_completion = TaskCompletionMetrics(
+            task_completed=evaluation.task_completed,
+            steps_taken=1,
+            expected_steps=1
+        )
+
+        quality_control = QualityControlMetrics(
+            format_correct=evaluation.format_correct,
+            instructions_followed=evaluation.instructions_followed
+        )
+
+        # For final response evaluation, we can't evaluate tool interaction details
+        tool_interaction = ToolInteractionMetrics(
+            correct_tool_selected=True,  # Assume correct if task completed
+            valid_arguments=True,
+            tool_result_useful=evaluation.task_completed
+        )
+
+        system_metrics = SystemMetrics(
+            total_tokens=0.0,
+            execution_time=execution_time,
+            tool_call_latency=execution_time,
+            cost_estimate=0.0
+        )
+
+        # Calculate overall score
+        scores = [
+            1.0 if task_completion.task_completed else 0.0,
+            1.0 if quality_control.format_correct else 0.0,
+            1.0 if quality_control.instructions_followed else 0.0
+        ]
+        overall_score = sum(scores) / len(scores)
+
+        return EvaluationResult(
+            task_completion=task_completion,
+            quality_control=quality_control,
+            tool_interaction=tool_interaction,
+            system_metrics=system_metrics,
+            overall_score=overall_score,
+            feedback=evaluation.explanation
+        )
+
     def _estimate_cost(self, total_tokens: int) -> float:
         """Estimate cost based on token usage (rough estimate for GPT-4o-mini)"""
         # Rough estimate: $0.15 per 1M input tokens, $0.60 per 1M output tokens
