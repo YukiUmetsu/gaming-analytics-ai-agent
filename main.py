@@ -11,8 +11,13 @@ from tools import (
     decompose_query,
     research_subquestions,
 )
+from lib.observability import (
+    configure_observability,
+    flush_observability,
+)
 
 def main():
+    configure_observability()
     configure_logging()
 
     agentic_rag = Agent(
@@ -54,14 +59,17 @@ def main():
         "Find three games that have had major news or announcements in the past month. For each game, research its developer or publisher, release date and platforms, and explain briefly why it is currently in the news. Then compare the three"
     ]
 
-    for question in questions:
-        run = agentic_rag.invoke(
-            query=question,
-            session_id="pokemon",
-        )
+    try:
+        for question in questions:
+            run = agentic_rag.invoke(
+                query=question,
+                session_id="pokemon",
+            )
 
-        log_result(question, run)
-        save_result(question, run)
+            log_result(question, run)
+            save_result(question, run)
+    finally:
+        flush_observability()
 
 if __name__ == "__main__":
     main()

@@ -4,7 +4,6 @@ from lib.tooling import tool
 from lib.vector_db import VectorStore, VectorStoreManager
 from tavily import TavilyClient
 from lib.memory import MemoryFragment, LongTermMemory
-from lib.observability import tracer
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from concurrent.futures import ThreadPoolExecutor
@@ -29,7 +28,6 @@ long_term_memory = LongTermMemory(
 
 
 @tool
-@tracer.tool
 def retrieve_game(query: str) -> list[str]:
     """
     Semantic search: Finds most results in the vector DB
@@ -43,7 +41,6 @@ def retrieve_game(query: str) -> list[str]:
 from lib.evaluation import AgentEvaluator
 
 @tool
-@tracer.tool
 def evaluate_retrieval(question: str, retrieved_docs: list[dict]):
     """
     Based on the user's question and on the list of retrieved documents,
@@ -75,7 +72,6 @@ def evaluate_retrieval(question: str, retrieved_docs: list[dict]):
     return result
 
 @tool
-@tracer.tool
 def tavily_web_search(
     question: str,
     max_results: int = 5,
@@ -100,7 +96,6 @@ def tavily_web_search(
     )
 
 @tool
-@tracer.tool
 def game_web_search(
     question: str,
     max_results: int = 5,
@@ -166,7 +161,6 @@ def game_web_search(
     return web_results
 
 @tool
-@tracer.tool
 def search_memory(
     query: str,
     limit: int = 5,
@@ -204,7 +198,6 @@ def search_memory(
     ]
 
 @tool
-@tracer.tool
 def save_memory(
     content: str,
     source_url: str = "",
@@ -239,7 +232,6 @@ def save_memory(
     }
 
 @tool
-@tracer.tool
 def exact_game_lookup(
     name: str,
     platform: str | None = None,
@@ -297,7 +289,6 @@ def exact_game_lookup(
     ]
 
 @tool
-@tracer.tool
 def get_recent_game_news(
     question: str,
     max_results: int = 5,
