@@ -39,6 +39,7 @@ class LLM:
         if self.tools:
             payload["tools"] = [tool.dict() for tool in self.tools.values()]
             payload["tool_choice"] = "auto"
+            payload["parallel_tool_calls"] = True
 
         return payload
 

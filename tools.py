@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 import chromadb
 from lib.tooling import tool
 from lib.vector_db import VectorStore, VectorStoreManager
@@ -30,9 +31,16 @@ long_term_memory = LongTermMemory(
 @tool
 def retrieve_game(query: str) -> list[str]:
     """
-    Semantic search: Finds most results in the vector DB
-    args:
-    - query: a question about game industry.
+    Semantic search for a single game-industry research question.
+
+    Use this directly for one research task.
+
+    If there are multiple independent research questions, do not call this
+    tool repeatedly from the parent agent. Use research_subquestions so each
+    question can be researched concurrently by separate agents.
+
+    Args:
+        query: One game-industry research question.
     """
     vector_store = VectorStore(chroma_collection=collection)
     results = vector_store.query(query_texts=[query], n_results=5)
@@ -238,10 +246,14 @@ def exact_game_lookup(
 ) -> list[dict]:
     """
     Find games using exact metadata rather than semantic similarity.
-
     Args:
         name: Game title.
         platform: Optional platform name.
+
+    Look up one game's exact structured metadata.
+    Use this directly for a single lookup.
+    For multiple independent games, use research_subquestions instead of
+    repeatedly calling this tool from the parent agent.
     """
     where_conditions = [
         {
@@ -350,36 +362,70 @@ def save_web_result(
     )
 
 class QueryPlan(BaseModel):
-    needs_decomposition: bool = Field(
-        description="Whether the question requires multiple independent facts"
+    strategy: Literal[
+        "direct",
+        "parallel",
+        "sequential_then_parallel",
+    ]
+    prerequisite: str | None = Field(
+        default=None,
+        description=(
+            "A task that must be completed before parallel research can begin."
+        ),
     )
     subquestions: list[str] = Field(
-        description="Independent questions needed to answer the original question"
+        default_factory=list,
+        description="Independent questions that can be researched concurrently.",
+    )
+    reasoning: str = Field(
+        description="Brief explanation of why this strategy was selected.",
     )
 
 
 @tool
-def decompose_query(question: str) -> dict:
+def plan_query(question: str) -> dict:
     """
-    Break a complex game-industry question into independent subquestions.
+    Choose how a complex game-industry question should be executed.
 
-    Use this when answering the original question requires multiple facts,
-    lookups, comparisons, filters, or intermediate steps.
-
-    Do not use this for simple single-fact questions.
+    Strategies:
+    - direct: answer using normal tools.
+    - parallel: independent research questions can run concurrently.
+    - sequential_then_parallel: first discover information required to
+      create independent research questions, then run those in parallel.
     """
     llm = LLM(
         model="gpt-4o-mini",
         temperature=0.0,
     )
 
-    prompt = f"""Analyze this video-game question: {question}
-Determine whether answering it requires multiple independent facts or steps.
-If it is simple, set needs_decomposition to false and return no subquestions.
-If it is complex, split it into the smallest useful independent
-subquestions. Each subquestion should be answerable using one or more
-available retrieval/search tools.
-Do not answer the question itself.
+    prompt = f"""
+Plan how to answer this game-industry question:
+
+{question}
+
+Choose exactly one strategy:
+
+direct:
+Use when the question can be answered normally without splitting it
+into multiple independent research tasks.
+Return no prerequisite and no subquestions.
+
+parallel:
+Use when the question already contains two or more independent
+research tasks that can run at the same time.
+Return each independent task as a subquestion.
+Return no prerequisite.
+
+sequential_then_parallel:
+Use when one prerequisite must be completed before the independent
+research tasks are known.
+For example, finding three currently trending games must happen before
+each game can be researched independently.
+Return the prerequisite task.
+Do not invent unknown entities in subquestions.
+
+Keep the reasoning brief.
+Do not answer the original question.
 """
 
     response = llm.invoke(
@@ -434,7 +480,7 @@ def _research_subquestion(
 @tool
 def research_subquestions(
     subquestions: list[str],
-    max_workers: int = 3,
+    max_workers: int = 10,
 ) -> list[dict]:
     """
     Research independent subquestions concurrently using separate agents.
@@ -475,3 +521,30 @@ def research_subquestions(
             future.result()
             for future in futures
         ]
+
+@tool
+def research_entities(
+    entities: list[str],
+    research_task: str,
+    max_workers: int = 10,
+) -> list[dict]:
+    """
+    Research multiple independent entities concurrently.
+
+    Use this after another tool discovers a set of games, companies,
+    people, or other entities that now need the same type of research.
+
+    Args:
+        entities: Names of entities to research independently.
+        research_task: What should be researched about each entity.
+        max_workers: Maximum number of concurrent researchers.
+    """
+    subquestions = [
+        f"{research_task}\nEntity: {entity}"
+        for entity in entities
+    ]
+
+    return research_subquestions(
+        subquestions=subquestions,
+        max_workers=max_workers,
+    )

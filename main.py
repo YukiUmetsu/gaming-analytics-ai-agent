@@ -8,8 +8,9 @@ from tools import (
     exact_game_lookup,
     search_memory,
     get_recent_game_news,
-    decompose_query,
+    plan_query,
     research_subquestions,
+    research_entities,
 )
 from lib.observability import (
     configure_observability,
@@ -29,30 +30,37 @@ def main():
             exact_game_lookup,
             search_memory,
             get_recent_game_news,
-            decompose_query,
+            plan_query,
+            research_entities,
             research_subquestions,
         ],
         instructions=(
-            "You are an Agentic RAG assistant that can intelligently decide which tools to use "
-            "to answer user questions. Reason about the response, change the query and call "
-            "the tool again if needed to get better results. "
-            "For questions requiring multiple independent facts, use decompose_query first. "
-            "If it returns multiple independent subquestions, pass them together to "
-            "research_subquestions so separate research agents can investigate them concurrently. "
-            "Use their results to synthesize one answer to the original question. "
-            "Do not decompose simple single-fact questions. "
-            "Always explain your reasoning for tool selection and provide comprehensive answers."
+            "You are an Agentic RAG assistant that intelligently decides which tools "
+            "to use to answer game-industry questions. "
+            "For simple questions, use the appropriate research tools directly. "
+            "For questions involving multiple entities, multiple research tasks, or "
+            "a combination of discovery and research, call plan_query before doing the research. "
+            "If plan_query returns 'parallel', pass all returned subquestions together "
+            "to research_subquestions. Do not research those entities individually from the parent agent. "
+            "If plan_query returns 'sequential_then_parallel', first complete only the "
+            "prerequisite using the appropriate tool. Once the prerequisite result "
+            "identifies the entities or topics, create one independent research "
+            "question for each and pass them together to research_subquestions. "
+            "Use the subagent results to synthesize one final answer to the user's original question. "
+            "Do not use research_subquestions for dependent tasks. "
+            "Reason about the response and retry or reformulate searches when needed."
         ),
+        temperature=0.0,
     )
 
     questions = [
-        "When Pokémon Gold and Silver was released?",
-        "Which one was the first 3D platformer Mario game?",
-        "Was Mortal Kombat X realeased for Playstation 5?",
-        # Custom-tool demonstrations.
-        "What is Rockstar Games currently working on?",
-        "What did we previously learn about Rockstar's current projects?",
-        "Compare Marvel's Spider-Man, Grand Theft Auto: San Andreas, and Gran Turismo 5. For each game, find the release year and platform, then tell me which was released first and which was released most recently.",
+        # "When Pokémon Gold and Silver was released?",
+        # "Which one was the first 3D platformer Mario game?",
+        # "Was Mortal Kombat X realeased for Playstation 5?",
+        # # Custom-tool demonstrations.
+        # "What is Rockstar Games currently working on?",
+        # "What did we previously learn about Rockstar's current projects?",
+        # "Compare Marvel's Spider-Man, Grand Theft Auto: San Andreas, and Gran Turismo 5. For each game, find the release year and platform, then tell me which was released first and which was released most recently.",
         # Grand Theft Auto: San Andreas — 2004
         # Gran Turismo 5 — 2010
         # Marvel's Spider-Man — 2018
