@@ -1,3 +1,4 @@
+import json
 import inspect
 import datetime
 from typing import (
@@ -7,7 +8,9 @@ from typing import (
 )
 from functools import wraps
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
-
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+from openinference.semconv.trace import SpanAttributes
 
 # Type alias for OpenAI's tool call implementation
 ToolCall: TypeAlias = ChatCompletionMessageToolCall
@@ -103,7 +106,45 @@ class Tool:
         }
 
     def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
+        tracer = trace.get_tracer("udaplay")
+
+        input_value = json.dumps(
+            kwargs if kwargs else args,
+            ensure_ascii=False,
+            default=str,
+        )
+
+        with tracer.start_as_current_span(
+            self.name,
+            attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: "TOOL",
+                SpanAttributes.TOOL_NAME: self.name,
+                SpanAttributes.TOOL_PARAMETERS: input_value,
+                SpanAttributes.INPUT_VALUE: input_value,
+            },
+        ) as span:
+            try:
+                result = self.func(*args, **kwargs)
+
+                output_value = json.dumps(
+                    result,
+                    ensure_ascii=False,
+                    default=str,
+                )
+
+                span.set_attribute(
+                    SpanAttributes.OUTPUT_VALUE,
+                    output_value[:5000],
+                )
+                span.set_status(Status(StatusCode.OK))
+
+                return result
+            except Exception as exc:
+                span.record_exception(exc)
+                span.set_status(
+                    Status(StatusCode.ERROR, str(exc))
+                )
+                raise
 
     def __repr__(self):
         return f"<Tool name={self.name} params={[p['name'] for p in self.parameters]}>"

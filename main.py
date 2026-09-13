@@ -1,7 +1,6 @@
 from lib.agents import Agent
 from lib.utils import log_result, configure_logging
-from tools import retrieve_game, game_web_search, evaluate_retrieval
-
+from tools import retrieve_game, game_web_search, evaluate_retrieval, exact_game_lookup, search_memory, get_recent_game_news
 
 def main():
     configure_logging()
@@ -12,6 +11,9 @@ def main():
             retrieve_game,
             game_web_search,
             evaluate_retrieval,
+            exact_game_lookup,
+            search_memory,
+            get_recent_game_news,
         ],
         instructions=(
             "You are an Agentic RAG assistant that can intelligently decide which tools to use "
@@ -25,6 +27,9 @@ def main():
         "When Pokémon Gold and Silver was released?",
         "Which one was the first 3D platformer Mario game?",
         "Was Mortal Kombat X realeased for Playstation 5?",
+        # Custom-tool demonstrations.
+        "What is Rockstar Games currently working on?",
+        "What did we previously learn about Rockstar's current projects?"
     ]
 
     for question in questions:

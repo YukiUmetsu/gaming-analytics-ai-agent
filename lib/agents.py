@@ -1,11 +1,14 @@
-from typing import TypedDict, List, Optional, Union, TypeVar
+from typing import TypedDict, List, Optional, Union
 import json
-
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+from openinference.semconv.trace import SpanAttributes
 from lib.state_machine import StateMachine, Step, EntryPoint, Termination, Run
 from lib.llm import LLM
 from lib.messages import AIMessage, UserMessage, SystemMessage, ToolMessage
 from lib.tooling import Tool, ToolCall
 from lib.memory import ShortTermMemory
+from lib.observability import tracer
 import logging
 logger = logging.getLogger(__name__)
 
@@ -158,6 +161,7 @@ class Agent:
         
         return machine
 
+    @tracer.agent(name="udaplay-agent")
     def invoke(self, query: str, session_id: Optional[str] = None) -> Run:
         """
         Run the agent on a query

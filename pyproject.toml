@@ -12,7 +12,11 @@ dependencies = [
     "pydantic>=2.11.3",
     "python-dotenv>=1.1.0",
     "tavily-python>=0.5.4",
-    "pysqlite3"
+    "pysqlite3",
+    "arize-phoenix>=20.11.0",
+    "arize-phoenix-otel>=0.17.1",
+    "openinference-instrumentation-openai>=0.1.60",
+    "openinference-instrumentation>=0.1.63",
 ]
 
 [dependency-groups]
