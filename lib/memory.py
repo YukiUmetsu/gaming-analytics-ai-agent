@@ -222,8 +222,10 @@ class LongTermMemory:
     - Time-based filtering
     - Semantic similarity search
     """
-    def __init__(self, db:VectorStoreManager):
-        self.vector_store = db.create_store("long_term_memory", force=True)
+    def __init__(self, db: VectorStoreManager):
+        self.vector_store = db.get_or_create_store(
+            "long_term_memory"
+        )
 
     def get_namespaces(self) -> List[str]:
         """

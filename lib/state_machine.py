@@ -4,7 +4,8 @@ from datetime import datetime
 import uuid
 import copy
 import inspect
-
+import logging
+logger = logging.getLogger(__name__)
 
 StateSchema = TypeVar("StateSchema")
 
@@ -13,11 +14,17 @@ class Resource:
     vars: Dict[str, Any]
 
 class Step(Generic[StateSchema]):
-    def __init__(self, step_id: str, logic: Callable[[StateSchema], Dict]):
+    def __init__(
+        self,
+        step_id: str,
+        logic: Callable[[StateSchema], Dict],
+        log_message: Optional[Callable[[StateSchema], str]] = None,
+    ):
         self.step_id = step_id
         self.logic = logic
         # Store the number of parameters the logic function expects
         self.logic_params_count = self._calculate_params_count()
+        self.log_message = log_message
 
     def __str__(self) -> str:
         return f"Step('{self.step_id}')"
@@ -206,7 +213,7 @@ class StateMachine(Generic[StateSchema]):
         expected_fields = get_type_hints(self.state_schema)
         state_fields = set(state.keys())
         common_fields = state_fields.intersection(expected_fields)
-        
+
         if not common_fields:
             raise ValueError(f"Initial state must have at least one field from the schema. Expected fields: {list(expected_fields.keys())}")
 
@@ -215,25 +222,25 @@ class StateMachine(Generic[StateSchema]):
             raise Exception("No EntryPoint step found in workflow")
         if len(entry_points) > 1:
             raise Exception("Multiple EntryPoint steps found in workflow")
-        
+
         # Create a new run for this execution
         current_run = Run.create()
-        
-        current_step_id = entry_points[0].step_id        
+
+        current_step_id = entry_points[0].step_id
 
         while current_step_id:
             step = self.steps[current_step_id]
             if isinstance(step, Termination):
-                print(f"[StateMachine] Terminating: {current_step_id}")
+                logger.info(f"[StateMachine] Terminating: {current_step_id}")
                 break
-            
+
             # Replace state entirely
-            state = step.run(state, self.state_schema, resource)  
+            state = step.run(state, self.state_schema, resource)
 
             if isinstance(step, EntryPoint):
-                print(f"[StateMachine] Starting: {current_step_id}")
-            else:
-                print(f"[StateMachine] Executing step: {current_step_id}")
+                logger.info("[StateMachine] Starting: %s", current_step_id)
+            elif step.log_message:
+                logger.info("[StateMachine] %s", step.log_message(state))
 
             # Create and add snapshot to the current run
             snapshot = Snapshot.create(copy.deepcopy(state), self.state_schema, current_step_id)
