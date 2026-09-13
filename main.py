@@ -15,7 +15,7 @@ def main():
         ],
         instructions=(
             "You are an Agentic RAG assistant that can intelligently decide which tools to use "
-            "to answer user questions. Reason about about the response, change the query and call "
+            "to answer user questions. Reason about the response, change the query and call "
             "the tool again if needed in order to get better results. Always explain your reasoning "
             "for tool selection and provide comprehensive answers."
         ),

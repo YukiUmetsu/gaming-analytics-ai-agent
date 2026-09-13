@@ -30,10 +30,10 @@ class ShortTermMemory():
 
     def create_session(self, session_id: str) -> bool:
         """Create a new session
-        
+
         Args:
             session_id: Unique identifier for the session
-            
+
         Returns:
             bool: True if session was created, False if it already existed
         """
@@ -44,13 +44,13 @@ class ShortTermMemory():
 
     def delete_session(self, session_id: str) -> bool:
         """Delete a session
-        
+
         Args:
             session_id: Session to delete
-            
+
         Returns:
             bool: True if session was deleted, False if it didn't exist
-            
+
         Raises:
             ValueError: If attempting to delete the default session
         """
@@ -63,10 +63,10 @@ class ShortTermMemory():
 
     def _validate_session(self, session_id: str):
         """Validate that a session exists
-        
+
         Args:
             session_id: Session ID to validate
-            
+
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
@@ -75,11 +75,11 @@ class ShortTermMemory():
 
     def add(self, object: Any, session_id: Optional[str] = None):
         """Add a new object to the history
-        
+
         Args:
             object: Object to add to history
             session_id: Optional session ID to add to (uses default if None)
-            
+
         Raises:
             SessionNotFoundError: If specified session doesn't exist
         """
@@ -89,13 +89,13 @@ class ShortTermMemory():
 
     def get_all_objects(self, session_id: Optional[str] = None) -> List[Any]:
         """Get all objects for a session
-        
+
         Args:
             session_id: Optional session ID (uses default if None)
-            
+
         Returns:
             List of objects in the session
-            
+
         Raises:
             SessionNotFoundError: If specified session doesn't exist
         """
@@ -105,13 +105,13 @@ class ShortTermMemory():
 
     def get_last_object(self, session_id: Optional[str] = None) -> Optional[Any]:
         """Get the most recent object for a session
-        
+
         Args:
             session_id: Optional session ID (uses default if None)
-            
+
         Returns:
             The last object in the session if it exists, None if session is empty
-            
+
         Raises:
             SessionNotFoundError: If specified session doesn't exist
         """
@@ -141,19 +141,19 @@ class ShortTermMemory():
 
     def pop(self, session_id: Optional[str] = None) -> Optional[Any]:
         """Remove and return the last object from a session
-        
+
         Args:
             session_id: Optional session ID to pop from (uses default if None)
-            
+
         Returns:
             The last object in the session if it exists, None if session is empty
-            
+
         Raises:
             SessionNotFoundError: If specified session doesn't exist
         """
         session_id = session_id or "default"
         self._validate_session(session_id)
-        
+
         if not self.sessions[session_id]:
             return None
         return self.sessions[session_id].pop()
@@ -162,10 +162,10 @@ class ShortTermMemory():
 class MemoryFragment:
     """
     Represents a single piece of memory information stored in the long-term memory system.
-    
+
     This class encapsulates user preferences, facts, or contextual information that can be
     retrieved later to provide personalized responses in conversational AI applications.
-    
+
     Attributes:
         content (str): The actual memory content or information to be stored
         owner (str): Identifier for the user who owns this memory fragment
@@ -173,7 +173,7 @@ class MemoryFragment:
         timestamp (int): Unix timestamp when the memory was created (auto-generated)
     """
     content: str
-    owner: str 
+    owner: str
     namespace: str = "default"
     timestamp: int = field(default_factory=lambda: int(datetime.now().timestamp()))
 
@@ -182,10 +182,10 @@ class MemoryFragment:
 class MemorySearchResult:
     """
     Container for the results of a memory search operation.
-    
+
     Encapsulates both the retrieved memory fragments and associated metadata
     such as distance scores from the vector search.
-    
+
     Attributes:
         fragments (List[MemoryFragment]): List of memory fragments matching the search query
         metadata (Dict): Additional information about the search results (e.g., distances, scores)
@@ -197,10 +197,10 @@ class MemorySearchResult:
 class TimestampFilter:
     """
     Filter criteria for time-based memory searches.
-    
+
     Allows filtering memory fragments based on when they were created,
     enabling retrieval of recent memories or memories from specific time periods.
-    
+
     Attributes:
         greater_than_value (int, optional): Unix timestamp - only return memories created after this time
         lower_than_value (int, optional): Unix timestamp - only return memories created before this time
@@ -230,25 +230,29 @@ class LongTermMemory:
     def get_namespaces(self) -> List[str]:
         """
         Retrieve all unique namespaces currently stored in memory.
-        
+
         Useful for understanding how memories are organized and for
         administrative purposes.
-        
+
         Returns:
             List[str]: List of unique namespace identifiers
         """
-        results = self.vector_store.get()
-        namespaces = [r["metadatas"][0]["namespace"] for r in results]
-        return namespaces
+        result = self.vector_store.get()
+
+        return sorted({
+            metadata.get("namespace", "default")
+            for metadata in result.get("metadatas", [])
+            if metadata
+        })
 
     def register(self, memory_fragment:MemoryFragment, metadata:Optional[Dict[str, str]]=None):
         """
         Store a new memory fragment in the long-term memory system.
-        
+
         The memory is converted to a vector embedding and stored with associated
         metadata for later retrieval. Additional metadata can be provided to
         enhance searchability.
-        
+
         Args:
             memory_fragment (MemoryFragment): The memory content to store
             metadata (Optional[Dict[str, str]]): Additional metadata to associate with the memory

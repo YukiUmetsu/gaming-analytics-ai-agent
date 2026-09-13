@@ -21,7 +21,7 @@ long_term_memory = LongTermMemory(
 
 
 @tool
-def retrieve_game(query: str) -> list[dict]:
+def retrieve_game(query: str) -> list[str]:
     """
     Semantic search: Finds most results in the vector DB
     args:
@@ -29,7 +29,7 @@ def retrieve_game(query: str) -> list[dict]:
     """
     vector_store = VectorStore(chroma_collection=collection)
     results = vector_store.query(query_texts=[query], n_results=5)
-    return results["documents"]
+    return results.get("documents", [[]])[0]
 
 from lib.evaluation import AgentEvaluator
 
@@ -101,12 +101,13 @@ def game_web_search(
         retrieved_docs=retrieved_docs,
     )
 
-    internal_docs = (
-        retrieved_docs[0]
-        if retrieved_docs
-        and isinstance(retrieved_docs[0], list)
-        else retrieved_docs
-    )
+    internal_results = [
+        {
+            "content": doc,
+            "source_type": "internal",
+        }
+        for doc in retrieved_docs
+    ]
 
     internal_results = [
         {
@@ -141,7 +142,7 @@ def game_web_search(
         for result in raw_web_results
     ]
 
-    for result in web_results:
+    for result in web_results[:2]:
         save_web_result(
             question=question,
             result=result,

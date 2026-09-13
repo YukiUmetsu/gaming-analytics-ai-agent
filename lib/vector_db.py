@@ -117,11 +117,11 @@ class VectorStore:
             ids (Optional[List[str]]): Specific document IDs to retrieve
             where (Optional[Dict[str, Any]]): Metadata filter conditions
             limit (Optional[int]): Maximum number of documents to return
-            
+
         Returns:
             GetResult: ChromaDB result containing the requested documents
                 with their metadata and IDs
-                
+
         Example:
             >>> # Get specific documents by ID
             >>> docs = store.get(ids=["doc-123", "doc-456"])
@@ -133,18 +133,18 @@ class VectorStore:
             ids=ids,
             where=where,
             limit=limit,
-            include=['documents', 'distances', 'metadatas']
+            include=['documents', 'metadatas']
         )
 
 class VectorStoreManager:
     """
     Factory and lifecycle manager for ChromaDB vector stores.
-    
+
     This class handles the creation, configuration, and management of ChromaDB
     collections with OpenAI embeddings. It provides a centralized way to manage
     multiple vector stores within an application, handling the underlying ChromaDB
     client and embedding function configuration.
-    
+
     Key responsibilities:
     - ChromaDB client initialization and management
     - OpenAI embedding function configuration
