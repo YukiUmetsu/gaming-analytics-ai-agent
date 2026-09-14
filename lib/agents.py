@@ -243,6 +243,18 @@ class Agent:
         message = messages[-1]
         tool_name = getattr(message, "name", None)
 
+        if tool_name == "evaluate_retrieval":
+            try:
+                result = json.loads(message.content)
+
+                return (
+                    "Tool evaluate_retrieval completed "
+                    f"→ useful={result.get('useful')}, "
+                    f"score={result.get('score')}"
+                )
+            except Exception:
+                pass
+
         return (
             f"Tool {tool_name} completed"
             if tool_name

@@ -238,9 +238,9 @@ class StateMachine(Generic[StateSchema]):
             state = step.run(state, self.state_schema, resource)
 
             if isinstance(step, EntryPoint):
-                print("[StateMachine] Starting: %s", current_step_id)
+                print(f"[StateMachine] Starting: {current_step_id}")
             elif step.log_message:
-                print("[StateMachine] %s", step.log_message(state))
+                print(f"[StateMachine] {step.log_message(state)}")
 
             # Create and add snapshot to the current run
             snapshot = Snapshot.create(copy.deepcopy(state), self.state_schema, current_step_id)
