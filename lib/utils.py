@@ -81,9 +81,13 @@ def configure_logging() -> None:
         handler.addFilter(_HideHttpRequests())
 
 def print_result(query, run):
-    final_state = run.get_final_state()
-    messages = final_state["messages"]
+    messages = run.get_final_state()["messages"]
 
-    print(f"\n\nQuestion: {query}")
-    print("Result:")
-    print(messages[-1].content)
+    print(f"\nQuestion: {query}")
+
+    for message in messages:
+        if getattr(message, "tool_calls", None):
+            for tool_call in message.tool_calls:
+                print(f"Tool: {tool_call.function.name}")
+
+    print(f"\nAnswer:\n{messages[-1].content}\n")
