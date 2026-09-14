@@ -79,3 +79,11 @@ def configure_logging() -> None:
 
     for handler in logging.getLogger().handlers:
         handler.addFilter(_HideHttpRequests())
+
+def print_result(query, run):
+    final_state = run.get_final_state()
+    messages = final_state["messages"]
+
+    print(f"\n\nQuestion: {query}")
+    print("Result:")
+    print(messages[-1].content)

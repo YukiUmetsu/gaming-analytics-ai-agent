@@ -54,13 +54,13 @@ def main():
     )
 
     questions = [
-        # "When Pokémon Gold and Silver was released?",
-        # "Which one was the first 3D platformer Mario game?",
-        # "Was Mortal Kombat X realeased for Playstation 5?",
-        # # Custom-tool demonstrations.
-        # "What is Rockstar Games currently working on?",
-        # "What did we previously learn about Rockstar's current projects?",
-        # "Compare Marvel's Spider-Man, Grand Theft Auto: San Andreas, and Gran Turismo 5. For each game, find the release year and platform, then tell me which was released first and which was released most recently.",
+        "When Pokémon Gold and Silver was released?",
+        "Which one was the first 3D platformer Mario game?",
+        "Was Mortal Kombat X realeased for Playstation 5?",
+        # Custom-tool demonstrations.
+        "What is Rockstar Games currently working on?",
+        "What did we previously learn about Rockstar's current projects?",
+        "Compare Marvel's Spider-Man, Grand Theft Auto: San Andreas, and Gran Turismo 5. For each game, find the release year and platform, then tell me which was released first and which was released most recently.",
         # Grand Theft Auto: San Andreas — 2004
         # Gran Turismo 5 — 2010
         # Marvel's Spider-Man — 2018
