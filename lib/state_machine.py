@@ -231,16 +231,16 @@ class StateMachine(Generic[StateSchema]):
         while current_step_id:
             step = self.steps[current_step_id]
             if isinstance(step, Termination):
-                logger.info(f"[StateMachine] Terminating: {current_step_id}")
+                print(f"[StateMachine] Terminating: {current_step_id}")
                 break
 
             # Replace state entirely
             state = step.run(state, self.state_schema, resource)
 
             if isinstance(step, EntryPoint):
-                logger.info("[StateMachine] Starting: %s", current_step_id)
+                print("[StateMachine] Starting: %s", current_step_id)
             elif step.log_message:
-                logger.info("[StateMachine] %s", step.log_message(state))
+                print("[StateMachine] %s", step.log_message(state))
 
             # Create and add snapshot to the current run
             snapshot = Snapshot.create(copy.deepcopy(state), self.state_schema, current_step_id)
